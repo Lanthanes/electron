@@ -24,8 +24,7 @@ phases:
       # better solution for checking out the commit to be built.
       (cd src/electron; git fetch origin +"${BUILD_SOURCEBRANCH}"; git checkout "${BUILD_SOURCEVERSION}")
       gclient sync --with_branch_heads --with_tags
-      export CHROMIUM_BUILDTOOLS_PATH=src/`pwd`/buildtools
-      echo "##vso[task.setvariable variable=CHROMIUM_BUILDTOOLS_PATH]`pwd`/buildtools"
+      echo "##vso[task.setvariable variable=CHROMIUM_BUILDTOOLS_PATH]src/`pwd`/buildtools"
     name: gclient_sync
 
   - bash: |
