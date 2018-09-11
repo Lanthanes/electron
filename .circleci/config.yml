@@ -112,8 +112,9 @@ build-steps: &build-steps
     - run:
         name: Test
         environment:
-          MOCHA_REPORTER: mocha-junit-reporter
+          MOCHA_REPORTER: mocha-multi-reporters
           MOCHA_FILE: junit/test-results.xml
+          MOCHA_MULTI_REPORTERS: mocha-junit-reporter, tap
           ELECTRON_DISABLE_SECURITY_WARNINGS: 1
         command: |
           if [ "$RUN_TESTS" != "false" ]; then
@@ -138,87 +139,10 @@ build-steps: &build-steps
     - store_artifacts:
         path: src/out/native_mksnapshot/mksnapshot
 
-mac-build-steps: &mac-build-steps
-  steps:
-    - run:
-        name: Setup depot tools
-        command: |
-          git clone --depth=1 https://chromium.googlesource.com/chromium/tools/depot_tools.git
-          echo 'export PATH="$PATH:'"$PWD"'/depot_tools"' >> $BASH_ENV
-          echo 'export GIT_CACHE_PATH="$HOME/.gclient-cache"' >> $BASH_ENV
-    - run:
-        name: Install Node.js 10 on MacOS
-        command: |
-          echo 'Installing Node.js 10 for MacOS'
-          brew update
-          brew install node@10
-          brew install gnu-tar
-          echo 'export PATH="/usr/local/opt/gnu-tar/libexec/gnubin:$PATH"' >> $BASH_ENV
-    - checkout:
-        path: src/electron
-    - run:
-        name: Gclient sync
-        command: |
-          gclient config \
-            --name "src/electron" \
-            --unmanaged \
-            $GCLIENT_EXTRA_ARGS \
-            "$CIRCLE_REPOSITORY_URL"
-          gclient sync --with_branch_heads --with_tags
-    - run:
-        name: GN gen
-        command: |
-          cd src
-          SCCACHE_PATH="$PWD/libchromiumcontent/tools/sccache/aad2120/mac/sccache"
-          echo 'export SCCACHE_WRAPPER="'"$SCCACHE_PATH"'"' >> $BASH_ENV
-          echo 'export CHROMIUM_BUILDTOOLS_PATH="'"$PWD"'/buildtools"' >> $BASH_ENV
-          source $BASH_ENV
-          gn gen out/Default --args='import("'$GN_CONFIG'") cc_wrapper="'"$SCCACHE_PATH"'"'" $GN_EXTRA_ARGS"
-    - run:
-        name: Ninja build
-        command: |
-          cd src
-          ninja -C out/Default electron:electron_app
-    - run:
-        name: Build dist.zip
-        command: |
-          cd src
-          ninja -C out/Default electron:electron_dist_zip
-    - run:
-        name: Check sccache stats after build
-        command: $SCCACHE_WRAPPER -s
-    - run:
-        name: Test
-        environment:
-          MOCHA_REPORTER: mocha-junit-reporter
-          MOCHA_FILE: junit/test-results.xml
-          ELECTRON_DISABLE_SECURITY_WARNINGS: 1
-        command: |
-          if [ "$RUN_TESTS" != "false" ]; then
-            cd src
-            ninja -C out/Default third_party/electron_node:headers
-            export npm_config_nodedir="$PWD/out/Default/gen/node_headers"
-            (cd electron/spec && npm install)
-            ./out/Default/Electron.app/Contents/MacOS/Electron electron/spec --ci --enable-logging
-          fi
-    - <<: *notify-slack-failure
-    - <<: *notify-slack-success
-    - store_test_results:
-        path: src/junit
-    - store_artifacts:
-        path: src/junit
-    - store_artifacts:
-        path: src/out/Default/dist.zip
-
 linux-build-machine: &linux-build-machine
   docker:
     - image: electronbuilds/electron:0.0.8
   resource_class: 2xlarge
-
-mac-build-machine: &mac-build-machine
-  macos:
-    xcode: "8.3.3"
-  resource_class: large
 
 version: 2
 jobs:
@@ -339,53 +263,6 @@ jobs:
       NIGHTLY_BUILD: true
     <<: *linux-build-machine
     <<: *build-steps
-
-  electron-osx-release:
-    environment:
-      GN_CONFIG: //electron/build/args/release.gn
-      RUN_TESTS: true
-      NIGHTLY_BUILD: true
-    <<: *mac-build-machine
-    <<: *mac-build-steps
-
-  electron-osx-testing:
-    environment:
-      GN_CONFIG: //electron/build/args/testing.gn
-      RUN_TESTS: true
-    <<: *mac-build-machine
-    <<: *mac-build-steps
-
-  electron-osx-debug:
-    environment:
-      GN_CONFIG: //electron/build/args/debug.gn
-      RUN_TESTS: false
-    <<: *mac-build-machine
-    <<: *mac-build-steps
-
-  electron-mas-release:
-    environment:
-      GN_CONFIG: //electron/build/args/release.gn
-      RUN_TESTS: true
-      GN_EXTRA_ARGS: 'is_mas_build = true'
-      NIGHTLY_BUILD: true
-    <<: *mac-build-machine
-    <<: *mac-build-steps
-
-  electron-mas-testing:
-    environment:
-      GN_CONFIG: //electron/build/args/testing.gn
-      RUN_TESTS: true
-      GN_EXTRA_ARGS: 'is_mas_build = true'
-    <<: *mac-build-machine
-    <<: *mac-build-steps
-
-  electron-mas-debug:
-    environment:
-      GN_CONFIG: //electron/build/args/debug.gn
-      RUN_TESTS: false
-      GN_EXTRA_ARGS: 'is_mas_build = true'
-    <<: *mac-build-machine
-    <<: *mac-build-steps
 
 workflows:
   version: 2

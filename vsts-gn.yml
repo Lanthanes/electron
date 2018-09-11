@@ -32,14 +32,14 @@ phases:
       echo "##vso[task.setvariable variable=SCCACHE_WRAPPER]$SCCACHE_WRAPPER"
       "$SCCACHE_WRAPPER" -s
       echo "GN gen for: $GN_CONFIG"
-      gn gen out/Default --args='import("'$GN_CONFIG'") cc_wrapper="'"$SCCACHE_WRAPPER"'"'
+      gn gen out/Default --args='import("'$GN_CONFIG'") cc_wrapper="'"$SCCACHE_WRAPPER"'"'" $GN_EXTRA_ARGS"
     name: GN_gen_with_sccache
     condition: and(succeeded(), ne(variables['ELECTRON_RELEASE'], '1'))
 
   - bash: |
       cd src
       echo "GN gen for: $GN_CONFIG"
-      gn gen out/Default --args='import("'$GN_CONFIG'")
+      gn gen out/Default --args='import("'$GN_CONFIG'")'" $GN_EXTRA_ARGS"
     name: GN_gen_without_sccache
     condition: and(succeeded(), eq(variables['ELECTRON_RELEASE'], '1'))
 
