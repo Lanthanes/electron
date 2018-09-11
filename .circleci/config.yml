@@ -276,12 +276,6 @@ workflows:
       - electron-linux-arm-testing
       - electron-linux-arm64-debug
       - electron-linux-arm64-testing
-  build-mac:
-    jobs:
-      - electron-mas-debug
-      - electron-mas-testing
-      - electron-osx-debug
-      - electron-osx-testing
 
   nightly-release-test:
     triggers:
@@ -296,5 +290,4 @@ workflows:
       - electron-linux-ia32-release
       - electron-linux-arm-release
       - electron-linux-arm64-release
-      - electron-mas-release
-      - electron-osx-release
+      
