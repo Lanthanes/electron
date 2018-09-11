@@ -6,6 +6,9 @@ phases:
     timeoutInMinutes: 180
   steps:
   - bash: |
+      which gclient
+      whoami
+      echo $PATH
       export GIT_CACHE_PATH="/Users/electron/libcc_cache"
       set -ex
       gclient config \
