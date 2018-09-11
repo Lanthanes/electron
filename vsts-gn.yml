@@ -2,6 +2,7 @@ jobs:
 - job: Build_Electron_via_GN
   timeoutInMinutes: 180
   strategy:
+    maxParallel: 2
     matrix:
       osx:
         Description: 'OSX build'
