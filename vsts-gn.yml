@@ -1,9 +1,13 @@
-resources:
-- repo: self
-phases:
-- phase: Build_Electron_via_GN
-  queue:
-    timeoutInMinutes: 180
+jobs:
+- job: Build_Electron_via_GN
+  timeoutInMinutes: 180
+  strategy:
+    matrix:
+      osx:
+        Description: 'OSX build'
+      mas:
+        Description: 'MAS build'
+        GN_EXTRA_ARGS: 'is_mas_build = true'
   steps:
   - bash: |
       export PATH="$PATH:/Users/electron/depot_tools"
