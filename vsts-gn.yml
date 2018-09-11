@@ -21,18 +21,27 @@ phases:
       # better solution for checking out the commit to be built.
       (cd src/electron; git fetch origin +"${BUILD_SOURCEBRANCH}"; git checkout "${BUILD_SOURCEVERSION}")
       gclient sync --with_branch_heads --with_tags
+      export CHROMIUM_BUILDTOOLS_PATH=src/`pwd`/buildtools
+      echo "##vso[task.setvariable variable=CHROMIUM_BUILDTOOLS_PATH]`pwd`/buildtools"
     name: gclient_sync
 
   - bash: |
       cd src
-      export CHROMIUM_BUILDTOOLS_PATH=`pwd`/buildtools
       export SCCACHE_WRAPPER="`pwd`/electron/external_binaries/sccache"
       "$SCCACHE_WRAPPER" --start-server
       echo "##vso[task.setvariable variable=SCCACHE_WRAPPER]$SCCACHE_WRAPPER"
-      echo "##vso[task.setvariable variable=CHROMIUM_BUILDTOOLS_PATH]`pwd`/buildtools"
+      "$SCCACHE_WRAPPER" -s
       echo "GN gen for: $GN_CONFIG"
       gn gen out/Default --args='import("'$GN_CONFIG'") cc_wrapper="'"$SCCACHE_WRAPPER"'"'
-    name: GN_gen
+    name: GN_gen_with_sccache
+    condition: and(succeeded(), ne(variables['ELECTRON_RELEASE'], '1'))
+
+  - bash: |
+      cd src
+      echo "GN gen for: $GN_CONFIG"
+      gn gen out/Default --args='import("'$GN_CONFIG'")
+    name: GN_gen_without_sccache
+    condition: and(succeeded(), eq(variables['ELECTRON_RELEASE'], '1'))
 
   - bash: |
       cd src
@@ -43,6 +52,7 @@ phases:
       "$SCCACHE_WRAPPER" -s
       "$SCCACHE_WRAPPER" --stop-server
     name: Check_sccache_stats
+    condition: and(succeeded(), ne(variables['ELECTRON_RELEASE'], '1'))
 
   - bash: |
       set +e
