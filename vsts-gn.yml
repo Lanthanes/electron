@@ -29,7 +29,7 @@ jobs:
   - bash: |
       cd src
       export SCCACHE_HELPER="`pwd`/electron/script/sccache-helper.py"
-      "$SCCACHE_HELPER" --start-server --aws_access_key "$(SCCACHE_AWS_ACCESS_KEY)" --aws_secret "$(SCCACHE_AWS_SECRET)"
+      "$SCCACHE_HELPER" --start-server --aws-access-key "$(SCCACHE_AWS_ACCESS_KEY)" --aws-secret "$(SCCACHE_AWS_SECRET)"
       export SCCACHE_WRAPPER="`pwd`/electron/external_binaries/sccache"
       echo "##vso[task.setvariable variable=SCCACHE_WRAPPER]$SCCACHE_WRAPPER"
       "$SCCACHE_WRAPPER" -s
