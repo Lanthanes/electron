@@ -24,35 +24,36 @@ jobs:
       cd src
       export CHROMIUM_BUILDTOOLS_PATH=`pwd`/buildtools
       echo "##vso[task.setvariable variable=CHROMIUM_BUILDTOOLS_PATH]`pwd`/buildtools"
-    name: gclient_sync
+    displayName: 'gclient sync'
 
   - bash: |
       cd src
+      export SCCACHE_HELPER="`pwd`/electron/script/sccache-helper.py"
+      "$SCCACHE_HELPER" --start-server --aws_access_key "$(SCCACHE_AWS_ACCESS_KEY)" --aws_secret "$(SCCACHE_AWS_SECRET)"
       export SCCACHE_WRAPPER="`pwd`/electron/external_binaries/sccache"
-      "$SCCACHE_WRAPPER" --start-server
       echo "##vso[task.setvariable variable=SCCACHE_WRAPPER]$SCCACHE_WRAPPER"
       "$SCCACHE_WRAPPER" -s
       echo "GN gen for: $GN_CONFIG"
       gn gen out/Default --args='import("'$GN_CONFIG'") cc_wrapper="'"$SCCACHE_WRAPPER"'"'" $GN_EXTRA_ARGS"
-    name: GN_gen_with_sccache
+    displayName: 'GN gen with sccache'
     condition: and(succeeded(), ne(variables['ELECTRON_RELEASE'], '1'))
 
   - bash: |
       cd src
       echo "GN gen for: $GN_CONFIG"
       gn gen out/Default --args='import("'$GN_CONFIG'")'" $GN_EXTRA_ARGS"
-    name: GN_gen_without_sccache
+    displayName: 'GN gen without sccache'
     condition: and(succeeded(), eq(variables['ELECTRON_RELEASE'], '1'))
 
   - bash: |
       cd src
       ninja -C out/Default electron:electron_app
-    name: Ninja_build
+    displayName: 'Ninja build app'
 
   - bash: |
       "$SCCACHE_WRAPPER" -s
       "$SCCACHE_WRAPPER" --stop-server
-    name: Check_sccache_stats
+    displayName: 'Check sccache stats after build'
     condition: and(succeeded(), ne(variables['ELECTRON_RELEASE'], '1'))
 
   - bash: |
@@ -62,19 +63,19 @@ jobs:
       export npm_config_nodedir="$PWD/out/Default/gen/node_headers"
       (cd electron/spec && npm install)
       ./out/Default/Electron.app/Contents/MacOS/Electron electron/spec --ci
-    name: Test
+    displayName: 'Test'
     condition: and(succeeded(), eq(variables['RUN_TESTS'], '1'))
 
   - bash: |
       cd src
       ninja -C out/Default electron:electron_dist_zip
-    name: Build_dist_zip
-    condition: and(succeeded(), eq(variables['ELECTRON_RELEASE'], '1'))
+    displayName: 'Build dist zip'
 
   - task: PublishTestResults@2
     displayName: Publish Test Results
     inputs:
-      testResultsFiles: '**/test-*.xml'
+      testResultsFiles: '*.xml'
+      searchFolder: '$(System.DefaultWorkingDirectory)/src/junit/'
     condition: and(always(), eq(variables['MOCHA_FILE'], 'junit/test-results.xml'), eq(variables['RUN_TESTS'], '1'))
 
   - task: PublishBuildArtifacts@1
@@ -82,14 +83,13 @@ jobs:
     inputs:
       PathtoPublish: '$(Build.SourcesDirectory)/out/Default/dist.zip'
       ArtifactName: dist.zip
-    condition: and(succeeded(), eq(variables['ELECTRON_RELEASE'], '1'))
 
   - bash: |
       export BUILD_URL="${SYSTEM_TEAMFOUNDATIONCOLLECTIONURI}${SYSTEM_TEAMPROJECT}/_build/results?buildId=${BUILD_BUILDID}"
       export MESSAGE="Build failed for *<$BUILD_URL|$BUILD_DEFINITIONNAME>* nightly build."
       curl -g -H "Content-Type: application/json" -X POST \
       -d "{\"text\": \"$MESSAGE\", \"attachments\": [{\"color\": \"#FC5C3C\",\"title\": \"$BUILD_DEFINITIONNAME nightly build results\",\"title_link\": \"$BUILD_URL\"}]}" $(slack_webhook)
-    name: Post_Slack_Notification_on_Failure
+    displayName: 'Post Slack Notification on Failure'
     condition: and(failed(), eq(variables['NOTIFY_SLACK'], '1'))
 
   - bash: |
@@ -97,5 +97,5 @@ jobs:
       export MESSAGE="Build succeeded for *<$BUILD_URL|$BUILD_DEFINITIONNAME>* nightly build."
       curl -g -H "Content-Type: application/json" -X POST \
       -d "{\"text\": \"$MESSAGE\", \"attachments\": [{\"color\": \"good\",\"title\": \"$BUILD_DEFINITIONNAME nightly build results\",\"title_link\": \"$BUILD_URL\"}]}" $(slack_webhook)
-    name: Post_Slack_Notification_on_Success
+    displayName: 'Post Slack Notification on Success'
     condition: and(succeeded(), eq(variables['NOTIFY_SLACK'], '1'))
